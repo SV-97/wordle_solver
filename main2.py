@@ -1,4 +1,3 @@
-DICTIONARY_FILE = r"/usr/share/dict/american-english"
 from concurrent.futures import process
 from itertools import count
 from string import ascii_letters
@@ -7,26 +6,29 @@ from enum import Enum, auto
 from collections import Counter
 from fractions import Fraction
 from math import log2
-from random import choice
+from random import choice, seed
 
 WORD_LENGTH = 5
+DICTIONARY_FILE = r"/usr/share/dict/american-english"
 
 
 with open(DICTIONARY_FILE, "r") as f:
-    words = [word.strip() for word in f.readlines() if len(word.strip()) == WORD_LENGTH]
-    WORDS = sorted({word.lower() for word in words if all(letter in ascii_letters for letter in word)})
+    words = [word.strip() for word in f.readlines()
+             if len(word.strip()) == WORD_LENGTH]
+    WORDS = sorted({word.lower() for word in words if all(
+        letter in ascii_letters for letter in word)})
 
 
 def wordle(word_to_guess):
     user_guess = None
     for i in range(5):
-        user_guess = yield word_to_guess == user_guess 
+        user_guess = yield word_to_guess == user_guess
 
 
 class Guess(Enum):
-    CORRECT = auto() # green
-    SEMI_CORRECT = auto() # yellow
-    WRONG = auto() # grey
+    CORRECT = auto()  # green
+    SEMI_CORRECT = auto()  # yellow
+    WRONG = auto()  # grey
 
 
 class Wordle():
@@ -60,10 +62,13 @@ class Wordle():
 
 def filter_new_words(words, guess, result, known):
     new_words = []
-    guess_correct_count = Counter([letter for letter, r in zip(guess, result) if r is Guess.CORRECT or r is Guess.SEMI_CORRECT])
+    guess_correct_count = Counter([letter for letter, r in zip(
+        guess, result) if r is Guess.CORRECT or r is Guess.SEMI_CORRECT])
+
     def process(word):
-        non_correct_word = {letter for letter, count in Counter(word).items() if count != guess_correct_count[letter]}
-        if word == guess: # remove the just-guessed word
+        non_correct_word = {letter for letter, count in Counter(
+            word).items() if count != guess_correct_count[letter]}
+        if word == guess:  # remove the just-guessed word
             # print("remove ", word, " by equality")
             return
         for i, (guess_letter, word_letter, r) in enumerate(zip(guess, word, result)):
@@ -82,7 +87,6 @@ def filter_new_words(words, guess, result, known):
         process(word)
     # print(new_words)
     return new_words
-
 
 
 def solver(game):
@@ -107,9 +111,11 @@ def solver(game):
         mask = np.ones(mask.shape, dtype=np.bool8)
         masked_words = np.array([[*word] for word in words])[:, mask]
         letter_counts = Counter(masked_words.flatten())
-        letter_probability = {letter : Fraction(n, int(mask.sum()) * len(words)) for letter, n in letter_counts.items()}
-        letter_information = {l : -p * log2(p) for l, p in letter_probability.items()}
-        
+        letter_probability = {letter: Fraction(
+            n, int(mask.sum()) * len(words)) for letter, n in letter_counts.items()}
+        letter_information = {l: -p * log2(p)
+                              for l, p in letter_probability.items()}
+
         @np.vectorize
         def get_letter_information(letter):
             return letter_information[letter]
@@ -118,7 +124,8 @@ def solver(game):
         def get_letter_probability(letter):
             return letter_probability[letter]
 
-        word_entropy = get_letter_information(masked_words).sum(axis=1) * get_letter_probability(masked_words).sum(axis=1) / float(mask.sum())
+        word_entropy = get_letter_information(masked_words).sum(
+            axis=1) * get_letter_probability(masked_words).sum(axis=1) / float(mask.sum())
         idx = np.argmax(word_entropy)
         return words[idx], word_entropy[idx]
     words = WORDS
@@ -137,7 +144,9 @@ def solver(game):
             words = filter_new_words(words, guess, result, known)
     return i, guess
 
+
 right = 0
+seed(0)
 for i in count(1):
     game = Wordle(choice(WORDS))
     # print(game)
@@ -146,4 +155,3 @@ for i in count(1):
     if tries <= 6:
         right += 1
     print(right/i)
-# print(game, game.guess("baron"))
